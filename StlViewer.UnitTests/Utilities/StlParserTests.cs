@@ -1,4 +1,6 @@
-﻿using StlViewer.Utilities;
+﻿using System.Numerics;
+using StlViewer.Exceptions;
+using StlViewer.Utilities;
 
 namespace StlViewer.UnitTests.Utilities
 {

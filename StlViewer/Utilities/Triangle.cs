@@ -1,4 +1,6 @@
-﻿namespace StlViewer.Utilities
+﻿using System.Numerics;
+
+namespace StlViewer.Utilities
 {
     public class Triangle
     {
@@ -9,10 +11,10 @@
 
         public Triangle()
         {
-            Normal = new Vector3(0, 0, 0);
-            Vertex1 = new Vector3(0, 0, 0);
-            Vertex2 = new Vector3(0, 0, 0);
-            Vertex3 = new Vector3(0, 0, 0);
+            Normal = Vector3.Zero;
+            Vertex1 = Vector3.Zero;
+            Vertex2 = Vector3.Zero;
+            Vertex3 = Vector3.Zero;
         }
     }
 }

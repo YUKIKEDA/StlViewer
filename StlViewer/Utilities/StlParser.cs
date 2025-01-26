@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Globalization;
 using StlViewer.Exceptions;
+using System.Numerics;
 
 namespace StlViewer.Utilities
 {
@@ -145,14 +146,16 @@ namespace StlViewer.Utilities
         {
             try
             {
-                var values = line.Replace(prefix, "").Trim().Split([' '], StringSplitOptions.RemoveEmptyEntries);
+                var values = line.Replace(prefix, "")
+                    .Trim()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(v => float.Parse(v, CultureInfo.InvariantCulture))
+                    .ToArray();
+
                 if (values.Length < 3)
                     throw new StlParserException($"ベクトルデータの形式が不正です: {line}");
 
-                return new Vector3(
-                    float.Parse(values[0], CultureInfo.InvariantCulture),
-                    float.Parse(values[1], CultureInfo.InvariantCulture),
-                    float.Parse(values[2], CultureInfo.InvariantCulture));
+                return new Vector3(values[0], values[1], values[2]);
             }
             catch (Exception ex) when (ex is not StlParserException)
             {
@@ -204,10 +207,10 @@ namespace StlViewer.Utilities
         {
             try
             {
-                return new Vector3(
-                    reader.ReadSingle(),
-                    reader.ReadSingle(),
-                    reader.ReadSingle());
+                var x = reader.ReadSingle();
+                var y = reader.ReadSingle();
+                var z = reader.ReadSingle();
+                return new Vector3(x, y, z);
             }
             catch (Exception ex)
             {
@@ -734,9 +737,18 @@ namespace StlViewer.Utilities
 
         private static async Task WriteVector3Async(Stream stream, Vector3 vector, CancellationToken cancellationToken)
         {
-            await stream.WriteAsync(BitConverter.GetBytes(vector.X), cancellationToken);
-            await stream.WriteAsync(BitConverter.GetBytes(vector.Y), cancellationToken);
-            await stream.WriteAsync(BitConverter.GetBytes(vector.Z), cancellationToken);
+            try
+            {
+                var buffer = new byte[12]; // 3 * sizeof(float)
+                Buffer.BlockCopy(BitConverter.GetBytes(vector.X), 0, buffer, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(vector.Y), 0, buffer, 4, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(vector.Z), 0, buffer, 8, 4);
+                await stream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw new StlParserException("ベクトルデータの書き込みに失敗しました。", ex);
+            }
         }
     }
 }
