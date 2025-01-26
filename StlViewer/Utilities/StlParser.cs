@@ -94,9 +94,35 @@ namespace StlViewer.Utilities
         {
             try
             {
-                using var reader = new StreamReader(filePath);
-                var firstLine = reader.ReadLine()?.Trim().ToLower() ?? "";
-                return firstLine.StartsWith("solid");
+                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                
+                // ファイルが小さすぎる場合はバイナリ形式
+                if (fileStream.Length < 84) // ヘッダー(80バイト) + 三角形数(4バイト)の最小サイズ
+                {
+                    return false;
+                }
+
+                using var reader = new StreamReader(fileStream);
+                
+                // 最初の行を読んで"solid"で始まるか確認
+                var firstLine = reader.ReadLine()?.Trim() ?? "";
+                if (string.IsNullOrEmpty(firstLine) || !firstLine.StartsWith("solid", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                // 次の有効な行を読んで、ASCII STLの構造に従っているか確認
+                string? nextLine;
+                while ((nextLine = reader.ReadLine()) != null)
+                {
+                    nextLine = nextLine.Trim();
+                    if (string.IsNullOrEmpty(nextLine)) continue;
+                    
+                    // 次の有効な行が"facet normal"で始まるかチェック
+                    return nextLine.StartsWith("facet normal", StringComparison.OrdinalIgnoreCase);
+                }
+
+                return false;
             }
             catch (Exception ex)
             {
@@ -368,10 +394,41 @@ namespace StlViewer.Utilities
         {
             try
             {
-                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, BUFFER_SIZE, FileOptions.Asynchronous);
+                await using var fileStream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    BUFFER_SIZE,
+                    FileOptions.Asynchronous);
+
+                // ファイルが小さすぎる場合はバイナリ形式
+                if (fileStream.Length < 84) // ヘッダー(80バイト) + 三角形数(4バイト)の最小サイズ
+                {
+                    return false;
+                }
+
                 using var reader = new StreamReader(fileStream);
+                
+                // 最初の行を読んで"solid"で始まるか確認
                 var firstLine = await reader.ReadLineAsync(cancellationToken);
-                return (firstLine?.Trim().ToLower() ?? "").StartsWith("solid");
+                if (string.IsNullOrEmpty(firstLine) || !firstLine.StartsWith("solid", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                // 次の有効な行を読んで、ASCII STLの構造に従っているか確認
+                string? nextLine;
+                while ((nextLine = await reader.ReadLineAsync(cancellationToken)) != null)
+                {
+                    nextLine = nextLine.Trim();
+                    if (string.IsNullOrEmpty(nextLine)) continue;
+                    
+                    // 次の有効な行が"facet normal"で始まるかチェック
+                    return nextLine.StartsWith("facet normal", StringComparison.OrdinalIgnoreCase);
+                }
+
+                return false;
             }
             catch (TaskCanceledException)
             {
