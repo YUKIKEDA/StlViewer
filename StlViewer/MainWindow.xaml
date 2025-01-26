@@ -1,12 +1,82 @@
-﻿<Window x:Class="StlViewer.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:StlViewer"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+﻿<Window
+    x:Class="StlViewer.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:StlViewer"
+    xmlns:viewmodels="clr-namespace:StlViewer.ViewModels"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="STL Viewer"
+    Width="1024"
+    Height="768"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    
+    <Window.DataContext>
+        <viewmodels:StlViewerViewModel />
+    </Window.DataContext>
 
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ツールバー -->
+        <ToolBar Grid.Row="0">
+            <Button
+                Command="{Binding LoadStlFileCommand}"
+                ToolTip="STLファイルを開く">
+                <StackPanel Orientation="Horizontal">
+                    <Image
+                        Width="16"
+                        Height="16"
+                        Source="/Resources/open.png"/>
+                    <TextBlock
+                        Margin="5,0,0,0"
+                        Text="開く"/>
+                </StackPanel>
+            </Button>
+        </ToolBar>
+
+        <!-- 3Dビューエリア -->
+        <Border
+            Grid.Row="1"
+            Background="#FF2D2D2D"
+            BorderBrush="Gray"
+            BorderThickness="1">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <TextBlock
+                    Foreground="White"
+                    Text="STLファイル情報"
+                    FontSize="18"
+                    Margin="0,0,0,20"
+                    TextAlignment="Center"/>
+                <TextBlock
+                    Foreground="White"
+                    Text="{Binding CurrentStlFile, StringFormat=ファイル: {0}, TargetNullValue=ファイルが読み込まれていません}"
+                    Margin="0,5"/>
+                <TextBlock
+                    Foreground="White"
+                    Text="{Binding CurrentStlFile.Triangles.Count, StringFormat=三角形の数: {0}個}"
+                    Margin="0,5"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ステータスバー -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <ProgressBar
+                    Width="100"
+                    Height="15"
+                    IsIndeterminate="{Binding IsLoading}"/>
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>
