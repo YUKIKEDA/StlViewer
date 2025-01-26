@@ -1,54 +1,9 @@
 ﻿using System.IO;
 using System.Globalization;
+using StlViewer.Exceptions;
 
 namespace StlViewer.Utilities
 {
-    public enum STLFileType
-    {
-        ASCII,
-        Binary
-    }
-
-    public class Vector3(float x, float y, float z)
-    {
-        public float X { get; set; } = x;
-        public float Y { get; set; } = y;
-        public float Z { get; set; } = z;
-
-        public override string ToString()
-        {
-            return $"{X} {Y} {Z}";
-        }
-    }
-
-    public class Triangle
-    {
-        public Vector3 Normal { get; set; }
-        public Vector3 Vertex1 { get; set; }
-        public Vector3 Vertex2 { get; set; }
-        public Vector3 Vertex3 { get; set; }
-
-        public Triangle()
-        {
-            Normal = new Vector3(0, 0, 0);
-            Vertex1 = new Vector3(0, 0, 0);
-            Vertex2 = new Vector3(0, 0, 0);
-            Vertex3 = new Vector3(0, 0, 0);
-        }
-    }
-
-    public class StlFile
-    {
-        public string SolidName { get; set; } = "DefaultSolid";
-        public List<Triangle> Triangles { get; set; } = [];
-    }
-
-    public class StlParserException : Exception
-    {
-        public StlParserException(string message) : base(message) { }
-        public StlParserException(string message, Exception innerException) : base(message, innerException) { }
-    }
-
     public class StlParser
     {
         private const int HEADER_SIZE_BYTES = 80;
