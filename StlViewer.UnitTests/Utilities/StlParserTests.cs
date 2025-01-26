@@ -351,5 +351,231 @@ endsolid test";
             await Assert.ThrowsAsync<OperationCanceledException>(async () =>
                 await StlParser.LoadAsync(filePath, cancellationToken: cts.Token));
         }
+
+        [Fact]
+        public void Load_RealWorldStlFile_LoadsSuccessfully()
+        {
+            // Arrange
+            var filePath = Path.Combine("..\\..\\..\\TestData", "DeLorean.STL");
+
+            // Act
+            var result = StlParser.Load(filePath);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEmpty(result.Triangles);
+            Assert.All(result.Triangles, triangle =>
+            {
+                Assert.NotNull(triangle.Normal);
+                Assert.NotNull(triangle.Vertex1);
+                Assert.NotNull(triangle.Vertex2);
+                Assert.NotNull(triangle.Vertex3);
+            });
+        }
+
+        [Fact]
+        public async Task LoadAsync_RealWorldStlFile_LoadsSuccessfully()
+        {
+            // Arrange
+            var filePath = Path.Combine("..\\..\\..\\TestData", "DeLorean.STL");
+            Assert.True(File.Exists(filePath), $"テストファイルが見つかりません: {filePath}");
+
+            var progressUpdates = new List<(int progress, string message)>();
+            void ProgressCallback(int progress, string message)
+            {
+                progressUpdates.Add((progress, message));
+            }
+
+            try
+            {
+                // Act
+                var result = await StlParser.LoadAsync(filePath, ProgressCallback);
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.NotEmpty(result.Triangles);
+                Assert.NotEmpty(progressUpdates);
+                Assert.Contains(progressUpdates, update => update.progress == 100);
+                Assert.All(result.Triangles, triangle =>
+                {
+                    Assert.NotNull(triangle.Normal);
+                    Assert.NotNull(triangle.Vertex1);
+                    Assert.NotNull(triangle.Vertex2);
+                    Assert.NotNull(triangle.Vertex3);
+                });
+            }
+            catch (StlParserException ex)
+            {
+                Assert.Fail($"STLファイルの解析に失敗しました: {ex.Message}\nファイルパス: {Path.GetFullPath(filePath)}");
+            }
+        }
+
+        [Fact]
+        public async Task SaveAndLoadRoundTrip_RealWorldStlFile_PreservesData()
+        {
+            // Arrange
+            var originalFilePath = Path.Combine("..\\..\\..\\TestData", "DeLorean.STL");
+            var asciiOutputPath = Path.Combine(TestFilesDirectory, "DeLorean_ascii.stl");
+            var binaryOutputPath = Path.Combine(TestFilesDirectory, "DeLorean_binary.stl");
+
+            // Act - Load original file
+            var original = StlParser.Load(originalFilePath);
+
+            // Save as ASCII and Binary
+            await StlParser.SaveAsync(original, asciiOutputPath, STLFileType.ASCII);
+            await StlParser.SaveAsync(original, binaryOutputPath, STLFileType.Binary);
+
+            // Load back the saved files
+            var loadedAscii = StlParser.Load(asciiOutputPath);
+            var loadedBinary = StlParser.Load(binaryOutputPath);
+
+            // Assert
+            Assert.Equal(original.Triangles.Count, loadedAscii.Triangles.Count);
+            Assert.Equal(original.Triangles.Count, loadedBinary.Triangles.Count);
+
+            // 三角形データの検証（浮動小数点の誤差を考慮）
+            for (var i = 0; i < original.Triangles.Count; i++)
+            {
+                var originalTriangle = original.Triangles[i];
+                var asciiTriangle = loadedAscii.Triangles[i];
+                var binaryTriangle = loadedBinary.Triangles[i];
+
+                AssertVector3Equal(originalTriangle.Normal, asciiTriangle.Normal);
+                AssertVector3Equal(originalTriangle.Vertex1, asciiTriangle.Vertex1);
+                AssertVector3Equal(originalTriangle.Vertex2, asciiTriangle.Vertex2);
+                AssertVector3Equal(originalTriangle.Vertex3, asciiTriangle.Vertex3);
+
+                AssertVector3Equal(originalTriangle.Normal, binaryTriangle.Normal);
+                AssertVector3Equal(originalTriangle.Vertex1, binaryTriangle.Vertex1);
+                AssertVector3Equal(originalTriangle.Vertex2, binaryTriangle.Vertex2);
+                AssertVector3Equal(originalTriangle.Vertex3, binaryTriangle.Vertex3);
+            }
+        }
+
+        private static void AssertVector3Equal(Vector3 expected, Vector3 actual, float tolerance = 0.000001f)
+        {
+            Assert.True(Math.Abs(expected.X - actual.X) < tolerance, 
+                $"X coordinates differ: expected {expected.X}, actual {actual.X}");
+            Assert.True(Math.Abs(expected.Y - actual.Y) < tolerance,
+                $"Y coordinates differ: expected {expected.Y}, actual {actual.Y}");
+            Assert.True(Math.Abs(expected.Z - actual.Z) < tolerance,
+                $"Z coordinates differ: expected {expected.Z}, actual {actual.Z}");
+        }
+
+        [Theory]
+        [InlineData("DeLorean.STL", "バイナリ")]
+        [InlineData("DeLorean_ascii.stl", "ASCII")]
+        public void Load_DifferentFormatStlFiles_LoadsSuccessfully(string fileName, string format)
+        {
+            // Arrange
+            var filePath = Path.Combine("..\\..\\..\\TestData", fileName);
+
+            // Act
+            var result = StlParser.Load(filePath);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEmpty(result.Triangles);
+            Assert.True(result.Triangles.Count > 1000, $"{format}形式のSTLファイルから期待される数の三角形データを読み込めませんでした。");
+            Assert.All(result.Triangles, triangle =>
+            {
+                Assert.NotNull(triangle.Normal);
+                Assert.NotNull(triangle.Vertex1);
+                Assert.NotNull(triangle.Vertex2);
+                Assert.NotNull(triangle.Vertex3);
+            });
+        }
+
+        [Theory]
+        [InlineData("DeLorean.STL", "バイナリ")]
+        [InlineData("DeLorean_ascii.stl", "ASCII")]
+        public async Task LoadAsync_DifferentFormatStlFiles_LoadsSuccessfully(string fileName, string format)
+        {
+            // Arrange
+            var filePath = Path.Combine("..\\..\\..\\TestData", fileName);
+            var progressUpdates = new List<(int progress, string message)>();
+            void ProgressCallback(int progress, string message)
+            {
+                progressUpdates.Add((progress, message));
+            }
+
+            // Act
+            var result = await StlParser.LoadAsync(filePath, ProgressCallback);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotEmpty(result.Triangles);
+            Assert.True(result.Triangles.Count > 1000, $"{format}形式のSTLファイルから期待される数の三角形データを読み込めませんでした。");
+            Assert.NotEmpty(progressUpdates);
+            Assert.Contains(progressUpdates, update => update.progress == 100);
+            Assert.All(result.Triangles, triangle =>
+            {
+                Assert.NotNull(triangle.Normal);
+                Assert.NotNull(triangle.Vertex1);
+                Assert.NotNull(triangle.Vertex2);
+                Assert.NotNull(triangle.Vertex3);
+            });
+        }
+
+        [Fact]
+        public async Task CompareAsciiAndBinaryFormats_ShouldHaveEquivalentData()
+        {
+            // Arrange
+            var binaryFilePath = Path.Combine("..\\..\\..\\TestData", "DeLorean.STL");
+            var asciiFilePath = Path.Combine("..\\..\\..\\TestData", "DeLorean_ascii.stl");
+
+            // Act
+            var binaryResult = await StlParser.LoadAsync(binaryFilePath);
+            var asciiResult = await StlParser.LoadAsync(asciiFilePath);
+
+            // Assert
+            Assert.Equal(binaryResult.Triangles.Count, asciiResult.Triangles.Count);
+
+            // 三角形データの比較（浮動小数点の誤差を考慮）
+            for (var i = 0; i < binaryResult.Triangles.Count; i++)
+            {
+                var binaryTriangle = binaryResult.Triangles[i];
+                var asciiTriangle = asciiResult.Triangles[i];
+
+                AssertVector3Equal(binaryTriangle.Normal, asciiTriangle.Normal);
+                AssertVector3Equal(binaryTriangle.Vertex1, asciiTriangle.Vertex1);
+                AssertVector3Equal(binaryTriangle.Vertex2, asciiTriangle.Vertex2);
+                AssertVector3Equal(binaryTriangle.Vertex3, asciiTriangle.Vertex3);
+            }
+        }
+
+        [Theory]
+        [InlineData("DeLorean.STL", STLFileType.Binary)]
+        [InlineData("DeLorean_ascii.stl", STLFileType.ASCII)]
+        public async Task SaveAndLoadRoundTrip_PreservesOriginalFormat(string fileName, STLFileType format)
+        {
+            // Arrange
+            var originalFilePath = Path.Combine("..\\..\\..\\TestData", fileName);
+            var outputPath = Path.Combine(TestFilesDirectory, $"output_{fileName}");
+
+            // Act - Load original file
+            var original = await StlParser.LoadAsync(originalFilePath);
+
+            // Save in the same format
+            await StlParser.SaveAsync(original, outputPath, format);
+
+            // Load back the saved file
+            var loaded = await StlParser.LoadAsync(outputPath);
+
+            // Assert
+            Assert.Equal(original.Triangles.Count, loaded.Triangles.Count);
+
+            // 三角形データの検証（浮動小数点の誤差を考慮）
+            for (var i = 0; i < original.Triangles.Count; i++)
+            {
+                var originalTriangle = original.Triangles[i];
+                var loadedTriangle = loaded.Triangles[i];
+
+                AssertVector3Equal(originalTriangle.Normal, loadedTriangle.Normal);
+                AssertVector3Equal(originalTriangle.Vertex1, loadedTriangle.Vertex1);
+                AssertVector3Equal(originalTriangle.Vertex2, loadedTriangle.Vertex2);
+                AssertVector3Equal(originalTriangle.Vertex3, loadedTriangle.Vertex3);
+            }
+        }
     }
 }
