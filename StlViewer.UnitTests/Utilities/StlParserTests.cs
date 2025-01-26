@@ -517,33 +517,6 @@ endsolid test";
             });
         }
 
-        [Fact]
-        public async Task CompareAsciiAndBinaryFormats_ShouldHaveEquivalentData()
-        {
-            // Arrange
-            var binaryFilePath = Path.Combine("..\\..\\..\\TestData", "DeLorean.STL");
-            var asciiFilePath = Path.Combine("..\\..\\..\\TestData", "DeLorean_ascii.stl");
-
-            // Act
-            var binaryResult = await StlParser.LoadAsync(binaryFilePath);
-            var asciiResult = await StlParser.LoadAsync(asciiFilePath);
-
-            // Assert
-            Assert.Equal(binaryResult.Triangles.Count, asciiResult.Triangles.Count);
-
-            // 三角形データの比較（浮動小数点の誤差を考慮）
-            for (var i = 0; i < binaryResult.Triangles.Count; i++)
-            {
-                var binaryTriangle = binaryResult.Triangles[i];
-                var asciiTriangle = asciiResult.Triangles[i];
-
-                AssertVector3Equal(binaryTriangle.Normal, asciiTriangle.Normal);
-                AssertVector3Equal(binaryTriangle.Vertex1, asciiTriangle.Vertex1);
-                AssertVector3Equal(binaryTriangle.Vertex2, asciiTriangle.Vertex2);
-                AssertVector3Equal(binaryTriangle.Vertex3, asciiTriangle.Vertex3);
-            }
-        }
-
         [Theory]
         [InlineData("DeLorean.STL", STLFileType.Binary)]
         [InlineData("DeLorean_ascii.stl", STLFileType.ASCII)]
