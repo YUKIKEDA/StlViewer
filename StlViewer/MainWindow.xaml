@@ -3,79 +3,106 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:glWpfControl="clr-namespace:OpenTK.Wpf;assembly=GLWpfControl"
     xmlns:local="clr-namespace:StlViewer"
-    xmlns:viewmodels="clr-namespace:StlViewer.ViewModels"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="clr-namespace:StlViewer.ViewModels"
     Title="STL Viewer"
     Width="1024"
     Height="768"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
-    
+
+    <!--<Grid>
+        <glWpfControl:GLWpfControl x:Name="OpenTkControl" Render="OpenTkControl_OnRender">
+
+            <glWpfControl:GLWpfControl.Settings>
+                <glWpfControl:GLWpfControlSettings MajorVersion="3" MinorVersion="3" />
+            </glWpfControl:GLWpfControl.Settings>
+
+        </glWpfControl:GLWpfControl>
+        <Border
+            Margin="10"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            BorderBrush="CornflowerBlue"
+            BorderThickness="2">
+            <Label
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Background="#FFE6931C"
+                Content="Overlaid label with border" />
+        </Border>
+        <glWpfControl:GLWpfControl
+            x:Name="InsetControl"
+            Width="128"
+            Height="128"
+            Margin="10,0,0,60"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            Render="InsetControl_OnRender" />
+        <Button
+            Width="128"
+            Margin="10"
+            Padding="0,10,0,10"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            Click="RedrawButton_OnClick"
+            Content="Redraw Inset Control" />
+    </Grid>-->
+
     <Window.DataContext>
         <viewmodels:StlViewerViewModel />
     </Window.DataContext>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-
-        <!-- ツールバー -->
         <ToolBar Grid.Row="0">
-            <Button
-                Command="{Binding LoadStlFileCommand}"
-                ToolTip="STLファイルを開く">
+            <Button Command="{Binding LoadStlFileCommand}" ToolTip="STLファイルを開く">
                 <StackPanel Orientation="Horizontal">
                     <Image
                         Width="16"
                         Height="16"
-                        Source="/Resources/open.png"/>
-                    <TextBlock
-                        Margin="5,0,0,0"
-                        Text="開く"/>
+                        Source="/Resources/open.png" />
+                    <TextBlock Margin="5,0,0,0" Text="開く" />
                 </StackPanel>
             </Button>
         </ToolBar>
-
-        <!-- 3Dビューエリア -->
         <Border
             Grid.Row="1"
             Background="#FF2D2D2D"
             BorderBrush="Gray"
             BorderThickness="1">
-            <StackPanel
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock
+                    Margin="0,0,0,20"
+                    FontSize="18"
                     Foreground="White"
                     Text="STLファイル情報"
-                    FontSize="18"
-                    Margin="0,0,0,20"
-                    TextAlignment="Center"/>
+                    TextAlignment="Center" />
                 <TextBlock
+                    Margin="0,5"
                     Foreground="White"
-                    Text="{Binding CurrentStlFile, StringFormat=ファイル: {0}, TargetNullValue=ファイルが読み込まれていません}"
-                    Margin="0,5"/>
+                    Text="{Binding CurrentStlFile, StringFormat=ファイル: {0}, TargetNullValue=ファイルが読み込まれていません}" />
                 <TextBlock
+                    Margin="0,5"
                     Foreground="White"
-                    Text="{Binding CurrentStlFile.Triangles.Count, StringFormat=三角形の数: {0}個}"
-                    Margin="0,5"/>
+                    Text="{Binding CurrentStlFile.Triangles.Count, StringFormat=三角形の数: {0}個}" />
             </StackPanel>
         </Border>
-
-        <!-- ステータスバー -->
         <StatusBar Grid.Row="2">
             <StatusBarItem>
-                <TextBlock Text="{Binding StatusMessage}"/>
+                <TextBlock Text="{Binding StatusMessage}" />
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <ProgressBar
                     Width="100"
                     Height="15"
-                    IsIndeterminate="{Binding IsLoading}"/>
+                    IsIndeterminate="{Binding IsLoading}" />
             </StatusBarItem>
         </StatusBar>
     </Grid>
