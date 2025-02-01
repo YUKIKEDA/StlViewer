@@ -295,51 +295,22 @@ void main()
             // プログラムオブジェクトの有効化
             GL.UseProgram(material.Program);
 
-            // アトリビュートの設定
-            List<int> attributeLocations = [];
-            foreach (var vbo in geometry.Vbos)
-            {
-                // バーテックスバッファオブジェクトのバインド
-                GL.BindBuffer(BufferTarget.ArrayBuffer, vbo.Vbo);
-
-                // アトリビュートの取得
-                var attributeLocation = GL.GetAttribLocation(material.Program, vbo.Name);
-
-                if (attributeLocation == -1)
-                {
-                    Debug.WriteLine($"警告: {vbo.Name}が見つかりません");
-                }
-                else
-                {
-                    // アトリビュートの有効化
-                    GL.EnableVertexAttribArray(attributeLocation);
-                    // アトリビュートのポインターの設定
-                    GL.VertexAttribPointer(attributeLocation, vbo.Size, VertexAttribPointerType.Float, false, 0, 0);
-                    // アトリビュートの位置をリストに追加
-                    attributeLocations.Add(attributeLocation);
-                }
-            }
-
-            // バーテックスバッファオブジェクトのバインド解除
-            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            // VAOのバインド
+            GL.BindVertexArray(geometry.Vao);
 
             // ユニフォーム変数の設定
             foreach (var uniform in material.UniformsFloat)
             {
-                // ユニフォーム変数の取得
                 var uniformLocation = GL.GetUniformLocation(material.Program, uniform.Name);
-
                 if (uniformLocation == -1)
                 {
                     Debug.WriteLine($"警告: {uniform.Name}が見つかりません");
                 }
                 else
                 {
-                    // 配列の長さに応じて適切なuniform*fvメソッドを呼び出す
                     switch (uniform.Values.Length)
                     {
                         case 16:
-                            // 4x4行列
                             var matrix = new Matrix4(
                                 uniform.Values[0], uniform.Values[1], uniform.Values[2], uniform.Values[3],
                                 uniform.Values[4], uniform.Values[5], uniform.Values[6], uniform.Values[7],
@@ -349,19 +320,15 @@ void main()
                             GL.UniformMatrix4(uniformLocation, false, ref matrix);
                             break;
                         case 4:
-                            // vec4
                             GL.Uniform4(uniformLocation, uniform.Values[0], uniform.Values[1], uniform.Values[2], uniform.Values[3]);
                             break;
                         case 3:
-                            // vec3
                             GL.Uniform3(uniformLocation, uniform.Values[0], uniform.Values[1], uniform.Values[2]);
                             break;
                         case 2:
-                            // vec2
                             GL.Uniform2(uniformLocation, uniform.Values[0], uniform.Values[1]);
                             break;
                         case 1:
-                            // float
                             GL.Uniform1(uniformLocation, uniform.Values[0]);
                             break;
                         default:
@@ -373,36 +340,29 @@ void main()
 
             foreach (var uniform in material.UniformsInt)
             {
-                // ユニフォーム変数の取得
                 var uniformLocation = GL.GetUniformLocation(material.Program, uniform.Name);
-
                 if (uniformLocation == -1)
                 {
                     Debug.WriteLine($"警告: {uniform.Name}が見つかりません");
                 }
                 else
                 {
-                    // 配列の長さに応じて適切なuniform*ivメソッドを呼び出す
                     switch (uniform.Values.Length)
                     {
                         case 4:
-                            // ivec4
                             GL.Uniform4(uniformLocation, uniform.Values[0], uniform.Values[1], uniform.Values[2], uniform.Values[3]);
                             break;
                         case 3:
-                            // ivec3
                             GL.Uniform3(uniformLocation, uniform.Values[0], uniform.Values[1], uniform.Values[2]);
                             break;
                         case 2:
-                            // ivec2
                             GL.Uniform2(uniformLocation, uniform.Values[0], uniform.Values[1]);
                             break;
                         case 1:
-                            // int
                             GL.Uniform1(uniformLocation, uniform.Values[0]);
                             break;
                         default:
-                            Console.WriteLine($"警告: サポートされていない配列の長さです: {uniform.Values.Length}");
+                            Debug.WriteLine($"警告: サポートされていない配列の長さです: {uniform.Values.Length}");
                             break;
                     }
                 }
@@ -424,9 +384,7 @@ void main()
             // ジオメトリの描画
             if (geometry.Ibos != null)
             {
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, geometry.Ibos.Ibo);
                 GL.DrawElements(geometry.Mode, geometry.IndexCount, DrawElementsType.UnsignedInt, 0);
-                GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
             }
             else
             {
@@ -441,10 +399,8 @@ void main()
                 GL.BindTexture(TextureTarget.Texture2D, 0);
             }
 
-            foreach (var attributeLocation in attributeLocations)
-            {
-                GL.DisableVertexAttribArray(attributeLocation);
-            }
+            // VAOのバインド解除
+            GL.BindVertexArray(0);
         }
 
         /// <summary>
@@ -733,6 +689,11 @@ void main()
         #region Public properties
 
         /// <summary>
+        /// バーテックスアレイオブジェクト
+        /// </summary>
+        public int Vao { get; private set; }
+
+        /// <summary>
         /// バーテックスバッファオブジェクト
         /// </summary>
         public VertexBufferObject[] Vbos { get; private set; }
@@ -755,7 +716,6 @@ void main()
         /// <summary>
         /// インデックス数
         /// </summary>
-        // インデックス数
         public int IndexCount { get; private set; }
 
         #endregion
@@ -768,25 +728,38 @@ void main()
         /// <param name="mode"> プリミティブタイプ </param>
         public Geometry(float[] vertices, int[] indices, PrimitiveType mode)
         {
+            // VAOの作成
+            Vao = GL.GenVertexArray();
+            
+            // VBOの作成
             Vbos = [new VertexBufferObject(CreateVbo(vertices), "a_position", 3)];
             Mode = mode;
             VertexCount = vertices.Length / 3;
+
+            // IBOの作成
             Ibos = new IndexBufferObject(CreateIbo(indices));
             IndexCount = indices.Length;
-        }
 
-        #region Public methods
+            // VAOの設定を更新
+            UpdateVao();
+        }
 
         /// <summary>
         /// リソースの解放
         /// </summary>
         public void Dispose()
         {
-            // インデックスバッファオブジェクトの削除
-            if (Ibos.Ibo != 0)
-                GL.DeleteBuffer(Ibos.Ibo);
+            if (Vao != 0)
+            {
+                GL.DeleteVertexArray(Vao);
+                Vao = 0;
+            }
 
-            // バーテックスバッファオブジェクトの削除
+            if (Ibos.Ibo != 0)
+            {
+                GL.DeleteBuffer(Ibos.Ibo);
+            }
+
             foreach (var vbo in Vbos)
             {
                 GL.DeleteBuffer(vbo.Vbo);
@@ -800,6 +773,7 @@ void main()
         public void AddUv0(float[] uv0)
         {
             Vbos = [.. Vbos, new VertexBufferObject(CreateVbo(uv0), "a_uv0", 2)];
+            UpdateVao();
         }
 
         /// <summary>
@@ -809,11 +783,40 @@ void main()
         public void AddNormal(float[] normal)
         {
             Vbos = [.. Vbos, new VertexBufferObject(CreateVbo(normal), "a_normal", 3)];
+            UpdateVao();
         }
 
-        #endregion
-
         #region Private methods
+
+        /// <summary>
+        /// VAOの設定を更新
+        /// </summary>
+        private void UpdateVao()
+        {
+            GL.BindVertexArray(Vao);
+
+            // VBOの設定
+            for (int i = 0; i < Vbos.Length; i++)
+            {
+                GL.BindBuffer(BufferTarget.ArrayBuffer, Vbos[i].Vbo);
+                GL.EnableVertexAttribArray(i);
+                GL.VertexAttribPointer(i, Vbos[i].Size, VertexAttribPointerType.Float, false, 0, 0);
+            }
+
+            // IBOの設定
+            if (Ibos != null)
+            {
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, Ibos.Ibo);
+            }
+
+            // バインド解除
+            GL.BindVertexArray(0);
+            GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+            if (Ibos != null)
+            {
+                GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
+            }
+        }
 
         private static int CreateVbo(float[] vertices)
         {
