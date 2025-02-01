@@ -1,4 +1,5 @@
-﻿using System.Windows.Media.Imaging;
+﻿using System.Diagnostics;
+using System.Windows.Media.Imaging;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using StlViewer.Utilities;
@@ -63,7 +64,11 @@ void main()
 
         public void Render(TimeSpan delta)
         {
-            if (_stlData == null || _material == null || _camera == null) return;
+            if (_stlData == null || _material == null || _camera == null)
+            {
+                Debug.WriteLine("Render: データが不足しています");
+                return;
+            }
 
             // カメラ行列
             var viewMatrix = _camera.GetViewMatrix();
@@ -74,6 +79,7 @@ void main()
 
             // ジオメトリの生成
             var geometry = CreateGeometry(_stlData.Value.Vertices, _stlData.Value.Indices, PrimitiveType.Triangles);
+            Debug.WriteLine($"Render: 頂点数 = {_stlData.Value.Vertices.Length / 3}, インデックス数 = {_stlData.Value.Indices.Length}");
 
             // モデル・ビュー・プロジェクション行列の計算
             var modelMatrix = Matrix4.Identity;
@@ -83,8 +89,21 @@ void main()
             _material.SetUniformFloat("u_mvp", mvpMatrix.ToArray());
             _material.SetUniformFloat("u_color", [0.7f, 0.7f, 0.7f, 1.0f]);
 
+            // OpenGLのエラーをチェック
+            var error = GL.GetError();
+            if (error != ErrorCode.NoError)
+            {
+                Debug.WriteLine($"OpenGLエラー (シェーダー設定前): {error}");
+            }
+
             // ジオメトリの描画
             Renderer.RenderGeometry(geometry, _material);
+
+            error = GL.GetError();
+            if (error != ErrorCode.NoError)
+            {
+                Debug.WriteLine($"OpenGLエラー (描画後): {error}");
+            }
 
             // ジオメトリの解放
             geometry.Dispose();
@@ -163,6 +182,22 @@ void main()
                 );
 
                 _modelSize = Math.Max(Math.Max(maxX - minX, maxY - minY), maxZ - minZ);
+
+                // カメラの位置を調整
+                if (_camera != null)
+                {
+                    // モデルの大きさに応じてカメラの位置を調整
+                    float distance = _modelSize * 2.0f;
+                    _camera.Position = new Vector3(
+                        _modelCenter.X,
+                        _modelCenter.Y,
+                        _modelCenter.Z + distance
+                    );
+                    _camera.Target = _modelCenter;
+                    _camera.Up = new Vector3(0, 1, 0);
+                    _camera.Near = distance * 0.01f;
+                    _camera.Far = distance * 10.0f;
+                }
             }
         }
 
@@ -173,7 +208,13 @@ void main()
 
         private static Material CreateMaterial()
         {
-            return new Material(VertexShaderSource, FragmentShaderSource);
+            var material = new Material(VertexShaderSource, FragmentShaderSource);
+            Debug.WriteLine($"シェーダープログラム作成: Program = {material.Program}");
+            var attribLocation = GL.GetAttribLocation(material.Program, "a_position");
+            Debug.WriteLine($"a_position location = {attribLocation}");
+            var uniformLocation = GL.GetUniformLocation(material.Program, "u_mvp");
+            Debug.WriteLine($"u_mvp location = {uniformLocation}");
+            return material;
         }
 
         private static Geometry CreateGeometry(float[] vertices, int[] indices, PrimitiveType primitiveType)
@@ -266,7 +307,7 @@ void main()
 
                 if (attributeLocation == -1)
                 {
-                    Console.WriteLine($"警告: {vbo.Name}が見つかりません");
+                    Debug.WriteLine($"警告: {vbo.Name}が見つかりません");
                 }
                 else
                 {
@@ -290,7 +331,7 @@ void main()
 
                 if (uniformLocation == -1)
                 {
-                    Console.WriteLine($"警告: {uniform.Name}が見つかりません");
+                    Debug.WriteLine($"警告: {uniform.Name}が見つかりません");
                 }
                 else
                 {
@@ -324,7 +365,7 @@ void main()
                             GL.Uniform1(uniformLocation, uniform.Values[0]);
                             break;
                         default:
-                            Console.WriteLine($"警告: サポートされていない配列の長さです: {uniform.Values.Length}");
+                            Debug.WriteLine($"警告: サポートされていない配列の長さです: {uniform.Values.Length}");
                             break;
                     }
                 }
@@ -337,7 +378,7 @@ void main()
 
                 if (uniformLocation == -1)
                 {
-                    Console.WriteLine($"警告: {uniform.Name}が見つかりません");
+                    Debug.WriteLine($"警告: {uniform.Name}が見つかりません");
                 }
                 else
                 {
@@ -372,7 +413,7 @@ void main()
             {
                 if (i >= 4)
                 {
-                    Console.WriteLine("警告: テクスチャユニット数が上限を超えています");
+                    Debug.WriteLine("警告: テクスチャユニット数が上限を超えています");
                     break;
                 }
 
@@ -384,7 +425,7 @@ void main()
             if (geometry.Ibos != null)
             {
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, geometry.Ibos.Ibo);
-                GL.DrawElements(geometry.Mode, geometry.IndexCount, DrawElementsType.UnsignedShort, 0);
+                GL.DrawElements(geometry.Mode, geometry.IndexCount, DrawElementsType.UnsignedInt, 0);
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, 0);
             }
             else
@@ -487,6 +528,41 @@ void main()
             UniformsFloat = [];
             UniformsInt = [];
             Textures = [];
+
+            // シェーダーのコンパイル結果を確認
+            GL.GetShader(VertexShader, ShaderParameter.CompileStatus, out int vertexCompileStatus);
+            if (vertexCompileStatus == 0)
+            {
+                string log = GL.GetShaderInfoLog(VertexShader);
+                Debug.WriteLine($"頂点シェーダーのコンパイルエラー: {log}");
+            }
+            else
+            {
+                Debug.WriteLine("頂点シェーダーのコンパイル成功");
+            }
+
+            GL.GetShader(FragmentShader, ShaderParameter.CompileStatus, out int fragmentCompileStatus);
+            if (fragmentCompileStatus == 0)
+            {
+                string log = GL.GetShaderInfoLog(FragmentShader);
+                Debug.WriteLine($"フラグメントシェーダーのコンパイルエラー: {log}");
+            }
+            else
+            {
+                Debug.WriteLine("フラグメントシェーダーのコンパイル成功");
+            }
+
+            // プログラムのリンク結果を確認
+            GL.GetProgram(Program, GetProgramParameterName.LinkStatus, out int linkStatus);
+            if (linkStatus == 0)
+            {
+                string log = GL.GetProgramInfoLog(Program);
+                Debug.WriteLine($"プログラムのリンクエラー: {log}");
+            }
+            else
+            {
+                Debug.WriteLine("プログラムのリンク成功");
+            }
         }
 
         #region Public methods
@@ -865,7 +941,7 @@ void main()
             // イメージ読み込みエラー時の処理
             _img.DecodeFailed += (sender, e) =>
             {
-                Console.WriteLine($"警告: テクスチャの読み込みに失敗しました: {imageSource}");
+                Debug.WriteLine($"警告: テクスチャの読み込みに失敗しました: {imageSource}");
                 _isLoaded = true;
             };
         }

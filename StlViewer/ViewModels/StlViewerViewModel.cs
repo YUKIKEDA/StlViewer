@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -76,6 +77,11 @@ namespace StlViewer.ViewModels
                         CurrentStlFile = StlParser.Load(openFileDialog.FileName);
                     });
 
+                    if (CurrentStlFile != null)
+                    {
+                        Debug.WriteLine($"STLファイル読み込み完了 - 三角形数: {CurrentStlFile.Triangles.Count}");
+                    }
+
                     _stlViewAreaViewModel.SetStlFile(CurrentStlFile);
                     StatusMessage = $"ファイルを読み込みました: {Path.GetFileName(openFileDialog.FileName)}";
                 }
@@ -87,6 +93,7 @@ namespace StlViewer.ViewModels
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                     StatusMessage = "ファイルの読み込みに失敗しました";
+                    Debug.WriteLine($"STLファイル読み込みエラー: {ex}");
                 }
                 finally
                 {
