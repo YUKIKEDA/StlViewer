@@ -285,6 +285,8 @@ void main()
 
         private void RotateCamera(float deltaX, float deltaY)
         {
+            if (_camera == null) return;
+
             var direction = _camera.Position - _camera.Target;
             
             // Y軸周りの回転（deltaXに負の符号を付けて回転方向を反転）
@@ -303,6 +305,8 @@ void main()
 
         private void PanCamera(float deltaX, float deltaY)
         {
+            if (_camera == null) return;
+
             var direction = _camera.Position - _camera.Target;
             var distance = direction.Length;
 
