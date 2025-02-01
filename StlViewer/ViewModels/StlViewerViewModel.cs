@@ -117,5 +117,25 @@ namespace StlViewer.ViewModels
         {
             _stlViewAreaViewModel.Render(delta);
         }
+
+        public void OnMouseDown(System.Windows.Point position)
+        {
+            _stlViewAreaViewModel.OnMouseDown(position);
+        }
+
+        public void OnMouseUp()
+        {
+            _stlViewAreaViewModel.OnMouseUp();
+        }
+
+        public void OnMouseMove(System.Windows.Point position)
+        {
+            _stlViewAreaViewModel.OnMouseMove(position);
+        }
+
+        public void OnMouseWheel(int delta)
+        {
+            _stlViewAreaViewModel.OnMouseWheel(delta);
+        }
     }
 }

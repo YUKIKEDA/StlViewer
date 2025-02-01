@@ -36,7 +36,11 @@
             x:Name="OpenTkControl"
             Grid.Row="1"
             Ready="OpenTkControl_Ready"
-            Render="OpenTkControl_OnRender">
+            Render="OpenTkControl_OnRender"
+            MouseDown="OpenTkControl_MouseDown"
+            MouseUp="OpenTkControl_MouseUp"
+            MouseMove="OpenTkControl_MouseMove"
+            MouseWheel="OpenTkControl_MouseWheel">
             <glWpfControl:GLWpfControl.Settings>
                 <glWpfControl:GLWpfControlSettings
                     MajorVersion="3"

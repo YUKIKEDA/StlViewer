@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Windows.Media.Imaging;
+using System.Windows.Input;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
 using StlViewer.Utilities;
@@ -54,6 +55,12 @@ void main()
         }
 
         private StlData? _stlData;
+
+        private bool _isDragging;
+        private System.Windows.Point _lastMousePosition;
+        private const float ROTATION_SPEED = 0.5f;
+        private const float ZOOM_SPEED = 0.1f;
+        private const float PAN_SPEED = 0.01f;
 
         public void Initialize()
         {
@@ -224,6 +231,88 @@ void main()
 
         private void InitializeExtensions()
         {
+        }
+
+        public void OnMouseDown(System.Windows.Point position)
+        {
+            _isDragging = true;
+            _lastMousePosition = position;
+        }
+
+        public void OnMouseUp()
+        {
+            _isDragging = false;
+        }
+
+        public void OnMouseMove(System.Windows.Point position)
+        {
+            if (!_isDragging || _camera == null) return;
+
+            var deltaX = (float)(position.X - _lastMousePosition.X);
+            var deltaY = (float)(position.Y - _lastMousePosition.Y);
+
+            if (Mouse.LeftButton == MouseButtonState.Pressed)
+            {
+                // 回転操作
+                RotateCamera(deltaX, deltaY);
+            }
+            else if (Mouse.RightButton == MouseButtonState.Pressed)
+            {
+                // パン操作
+                PanCamera(deltaX, deltaY);
+            }
+
+            _lastMousePosition = position;
+        }
+
+        public void OnMouseWheel(int delta)
+        {
+            if (_camera == null) return;
+
+            // ズーム操作
+            var zoomFactor = delta > 0 ? -ZOOM_SPEED : ZOOM_SPEED;
+            var direction = _camera.Position - _camera.Target;
+            direction *= (1.0f + zoomFactor);
+
+            // 最小距離と最大距離を制限
+            float minDistance = _modelSize * 0.1f;
+            float maxDistance = _modelSize * 10.0f;
+            if (direction.Length >= minDistance && direction.Length <= maxDistance)
+            {
+                _camera.Position = _camera.Target + direction;
+            }
+        }
+
+        private void RotateCamera(float deltaX, float deltaY)
+        {
+            var direction = _camera.Position - _camera.Target;
+            
+            // Y軸周りの回転
+            var rotationY = Matrix4.CreateRotationY(deltaX * ROTATION_SPEED * (float)Math.PI / 180.0f);
+            direction = Vector3.TransformVector(direction, rotationY);
+
+            // X軸周りの回転
+            var right = Vector3.Cross(direction, _camera.Up);
+            var rotationX = Matrix4.CreateFromAxisAngle(right, deltaY * ROTATION_SPEED * (float)Math.PI / 180.0f);
+            direction = Vector3.TransformVector(direction, rotationX);
+
+            // カメラの位置を更新
+            _camera.Position = _camera.Target + direction;
+            _camera.Up = Vector3.Cross(right, direction).Normalized();
+        }
+
+        private void PanCamera(float deltaX, float deltaY)
+        {
+            var direction = _camera.Position - _camera.Target;
+            var distance = direction.Length;
+
+            var right = Vector3.Cross(direction, _camera.Up).Normalized();
+            var up = Vector3.Cross(right, direction).Normalized();
+
+            var translation = right * (-deltaX * PAN_SPEED * distance) + up * (deltaY * PAN_SPEED * distance);
+
+            _camera.Position += translation;
+            _camera.Target += translation;
         }
     }
 
