@@ -689,7 +689,7 @@ void main()
 
         #region Private methods
 
-        private int CreateShader(string source, ShaderType type)
+        private static int CreateShader(string source, ShaderType type)
         {
             // シェーダーオブジェクトの作成
             int shader = GL.CreateShader(type);
@@ -711,7 +711,7 @@ void main()
             return shader;
         }
 
-        private int CreateProgram(int vertexShader, int fragmentShader)
+        private static int CreateProgram(int vertexShader, int fragmentShader)
         {
             // プログラムオブジェクトの作成
             int program = GL.CreateProgram();
