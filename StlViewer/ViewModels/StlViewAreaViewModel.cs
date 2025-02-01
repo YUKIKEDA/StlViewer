@@ -21,31 +21,23 @@ namespace StlViewer.ViewModels
 
     public class StlViewAreaViewModel
     {
-        private const string VertexShaderSource = @"#version 330 core
+        private const string VertexShaderSource = @"#version 330
 
-// 頂点属性
 in vec3 a_position;
-
-// ユニフォーム変数
 uniform mat4 u_mvp;
 
 void main()
 {
-    // 最終的な頂点位置の計算
     gl_Position = u_mvp * vec4(a_position, 1.0);
 }";
 
-        private const string FragmentShaderSource = @"#version 330 core
+        private const string FragmentShaderSource = @"#version 330
 
-// ユニフォーム変数
 uniform vec4 u_color;
-
-// 出力変数
 out vec4 o_color;
 
 void main()
 {
-    // ユニフォーム変数で指定された色で描画
     o_color = u_color;
 }";
         private Renderer? _renderer;
