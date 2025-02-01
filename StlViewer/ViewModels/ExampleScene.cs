@@ -29,11 +29,11 @@ namespace StlViewer.ViewModels
         }
 
         private static readonly Vertex[] vertices =
-        {
-            new Vertex((0.0f, 0.5f), Color4.Red),
-            new Vertex((0.58f, -0.5f), Color4.Green),
-            new Vertex((-0.58f, -0.5f), Color4.Blue),
-        };
+        [
+            new((0.0f, 0.5f), Color4.Red),
+            new((0.58f, -0.5f), Color4.Green),
+            new((-0.58f, -0.5f), Color4.Blue),
+        ];
 
         private static readonly string VertexShaderSource =
 @"#version 330 core

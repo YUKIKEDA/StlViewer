@@ -154,8 +154,8 @@ void main()
             // STLデータを保存
             _stlData = new StlData
             {
-                Vertices = vertices.ToArray(),
-                Indices = indices.ToArray()
+                Vertices = [.. vertices],
+                Indices = [.. indices]
             };
 
             // モデルの中心と大きさを計算

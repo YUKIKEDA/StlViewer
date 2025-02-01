@@ -743,7 +743,7 @@ namespace StlViewer.Utilities
                 Buffer.BlockCopy(BitConverter.GetBytes(vector.X), 0, buffer, 0, 4);
                 Buffer.BlockCopy(BitConverter.GetBytes(vector.Y), 0, buffer, 4, 4);
                 Buffer.BlockCopy(BitConverter.GetBytes(vector.Z), 0, buffer, 8, 4);
-                await stream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
+                await stream.WriteAsync(buffer, cancellationToken);
             }
             catch (Exception ex)
             {
