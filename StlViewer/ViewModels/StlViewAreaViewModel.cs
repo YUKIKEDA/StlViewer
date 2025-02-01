@@ -287,8 +287,8 @@ void main()
         {
             var direction = _camera.Position - _camera.Target;
             
-            // Y軸周りの回転
-            var rotationY = Matrix4.CreateRotationY(deltaX * ROTATION_SPEED * (float)Math.PI / 180.0f);
+            // Y軸周りの回転（deltaXに負の符号を付けて回転方向を反転）
+            var rotationY = Matrix4.CreateRotationY(-deltaX * ROTATION_SPEED * (float)Math.PI / 180.0f);
             direction = Vector3.TransformVector(direction, rotationY);
 
             // X軸周りの回転
