@@ -7,8 +7,32 @@ namespace StlViewer.ViewModels
 {
     public class StlViewAreaViewModel
     {
-        private const string VertexShaderSource = "";
-        private const string FragmentShaderSource = "";
+        private const string VertexShaderSource = @"#version 330 core
+
+// 頂点属性
+in vec3 a_position;
+
+// ユニフォーム変数
+uniform mat4 u_model;
+uniform mat4 u_view;
+uniform mat4 u_projection;
+
+void main()
+{
+    // 最終的な頂点位置の計算
+    gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);
+}";
+
+        private const string FragmentShaderSource = @"#version 330 core
+
+// 出力変数
+out vec4 o_color;
+
+void main()
+{
+    // 単色で描画
+    o_color = vec4(0.7, 0.7, 0.7, 1.0);
+}";
         private Renderer? _renderer;
         private Material? _material;
 
