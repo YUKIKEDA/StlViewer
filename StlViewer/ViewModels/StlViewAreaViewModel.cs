@@ -5,6 +5,20 @@ using StlViewer.Utilities;
 
 namespace StlViewer.ViewModels
 {
+    public static class Matrix4Extensions
+    {
+        public static float[] ToArray(this Matrix4 matrix)
+        {
+            return
+            [
+                matrix.M11, matrix.M12, matrix.M13, matrix.M14,
+                matrix.M21, matrix.M22, matrix.M23, matrix.M24,
+                matrix.M31, matrix.M32, matrix.M33, matrix.M34,
+                matrix.M41, matrix.M42, matrix.M43, matrix.M44
+            ];
+        }
+    }
+
     public class StlViewAreaViewModel
     {
         private const string VertexShaderSource = @"#version 330 core
@@ -13,28 +27,32 @@ namespace StlViewer.ViewModels
 in vec3 a_position;
 
 // ユニフォーム変数
-uniform mat4 u_model;
-uniform mat4 u_view;
-uniform mat4 u_projection;
+uniform mat4 u_mvp;
 
 void main()
 {
     // 最終的な頂点位置の計算
-    gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);
+    gl_Position = u_mvp * vec4(a_position, 1.0);
 }";
 
         private const string FragmentShaderSource = @"#version 330 core
+
+// ユニフォーム変数
+uniform vec4 u_color;
 
 // 出力変数
 out vec4 o_color;
 
 void main()
 {
-    // 単色で描画
-    o_color = vec4(0.7, 0.7, 0.7, 1.0);
+    // ユニフォーム変数で指定された色で描画
+    o_color = u_color;
 }";
         private Renderer? _renderer;
         private Material? _material;
+        private Camera? _camera;
+        private Vector3 _modelCenter;
+        private float _modelSize;
 
         private struct StlData
         {
@@ -48,25 +66,112 @@ void main()
         {
             _renderer = CreateRenderer();
             _material = CreateMaterial();
+            _camera = new Camera();
         }
 
         public void Render(TimeSpan delta)
         {
+            if (_stlData == null || _material == null || _camera == null) return;
+
+            // カメラ行列
+            var viewMatrix = _camera.GetViewMatrix();
+            var projectionMatrix = _camera.GetProjectionMatrix(true);
+
             // カラーバッファーとZバッファーのクリア
             Renderer.ClearBuffer();
-
-            if (_stlData == null || _material == null) return;
-
 
             // ジオメトリの生成
             var geometry = CreateGeometry(_stlData.Value.Vertices, _stlData.Value.Indices, PrimitiveType.Triangles);
 
+            // モデル・ビュー・プロジェクション行列の計算
+            var modelMatrix = Matrix4.Identity;
+            var mvpMatrix = modelMatrix * viewMatrix * projectionMatrix;
+
+            // シェーダーにユニフォーム変数を設定
+            _material.SetUniformFloat("u_mvp", mvpMatrix.ToArray());
+            _material.SetUniformFloat("u_color", [0.7f, 0.7f, 0.7f, 1.0f]);
+
             // ジオメトリの描画
             Renderer.RenderGeometry(geometry, _material);
+
+            // ジオメトリの解放
+            geometry.Dispose();
         }
 
         public void SetStlFile(StlFile? stlFile)
         {
+            if (stlFile == null)
+            {
+                _stlData = null;
+                return;
+            }
+
+            // 頂点データの生成
+            var vertices = new List<float>();
+            var indices = new List<int>();
+            var currentIndex = 0;
+
+            // 各三角形について処理
+            foreach (var triangle in stlFile.Triangles)
+            {
+                // 頂点座標を追加
+                vertices.AddRange(new[]
+                {
+                    triangle.Vertex1.X, triangle.Vertex1.Y, triangle.Vertex1.Z,
+                    triangle.Vertex2.X, triangle.Vertex2.Y, triangle.Vertex2.Z,
+                    triangle.Vertex3.X, triangle.Vertex3.Y, triangle.Vertex3.Z
+                });
+
+                // インデックスを追加
+                indices.AddRange(new[]
+                {
+                    currentIndex,
+                    currentIndex + 1,
+                    currentIndex + 2
+                });
+
+                currentIndex += 3;
+            }
+
+            // STLデータを保存
+            _stlData = new StlData
+            {
+                Vertices = vertices.ToArray(),
+                Indices = indices.ToArray()
+            };
+
+            // モデルの中心と大きさを計算
+            if (_stlData.Value.Vertices.Length > 0)
+            {
+                var minX = float.MaxValue;
+                var minY = float.MaxValue;
+                var minZ = float.MaxValue;
+                var maxX = float.MinValue;
+                var maxY = float.MinValue;
+                var maxZ = float.MinValue;
+
+                for (int i = 0; i < _stlData.Value.Vertices.Length; i += 3)
+                {
+                    var x = _stlData.Value.Vertices[i];
+                    var y = _stlData.Value.Vertices[i + 1];
+                    var z = _stlData.Value.Vertices[i + 2];
+
+                    minX = Math.Min(minX, x);
+                    minY = Math.Min(minY, y);
+                    minZ = Math.Min(minZ, z);
+                    maxX = Math.Max(maxX, x);
+                    maxY = Math.Max(maxY, y);
+                    maxZ = Math.Max(maxZ, z);
+                }
+
+                _modelCenter = new Vector3(
+                    (minX + maxX) / 2,
+                    (minY + maxY) / 2,
+                    (minZ + maxZ) / 2
+                );
+
+                _modelSize = Math.Max(Math.Max(maxX - minX, maxY - minY), maxZ - minZ);
+            }
         }
 
         private static Renderer CreateRenderer()
@@ -418,7 +523,7 @@ void main()
                 GL.DeleteShader(FragmentShader);
         }
 
-                /// <summary>
+        /// <summary>
         /// float型のユニフォーム変数の設定
         /// </summary>
         /// <param name="name"> ユニフォーム変数名 </param>
