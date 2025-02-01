@@ -592,7 +592,7 @@ void main()
             if (compileStatus == 0)
             {
                 string infoLog = GL.GetShaderInfoLog(shader);
-                Console.WriteLine($"シェーダーコンパイルに失敗しました。: {infoLog}");
+                throw new Exception($"シェーダーコンパイルに失敗しました。: {infoLog}");
             }
 
             return shader;
@@ -615,7 +615,7 @@ void main()
             if (linkStatus == 0)
             {
                 string infoLog = GL.GetProgramInfoLog(program);
-                Console.WriteLine($"プログラムのリンクに失敗しました。: {infoLog}");
+                throw new Exception($"プログラムのリンクに失敗しました。: {infoLog}");
             }
 
             return program;
