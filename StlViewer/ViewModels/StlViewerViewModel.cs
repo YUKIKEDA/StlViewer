@@ -56,6 +56,12 @@ namespace StlViewer.ViewModels
         }
 
         public ICommand LoadStlFileCommand { get; private set; }
+        public ICommand SetFrontViewCommand { get; private set; }
+        public ICommand SetBackViewCommand { get; private set; }
+        public ICommand SetTopViewCommand { get; private set; }
+        public ICommand SetBottomViewCommand { get; private set; }
+        public ICommand SetLeftViewCommand { get; private set; }
+        public ICommand SetRightViewCommand { get; private set; }
 
         private async void LoadStlFile()
         {
@@ -104,8 +110,14 @@ namespace StlViewer.ViewModels
 
         public StlViewerViewModel()
         {
-            LoadStlFileCommand = new RelayCommand(LoadStlFile);
             _stlViewAreaViewModel = new StlViewAreaViewModel();
+            LoadStlFileCommand = new RelayCommand(LoadStlFile);
+            SetFrontViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetFrontView());
+            SetBackViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetBackView());
+            SetTopViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetTopView());
+            SetBottomViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetBottomView());
+            SetLeftViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetLeftView());
+            SetRightViewCommand = new RelayCommand(() => _stlViewAreaViewModel.SetRightView());
         }
 
         public void Initialize()

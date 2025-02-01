@@ -314,6 +314,61 @@ void main()
             _camera.Position += translation;
             _camera.Target += translation;
         }
+
+        // 6面視のカメラ位置を設定するメソッド
+        public void SetFrontView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X, _modelCenter.Y, _modelCenter.Z + distance);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 1, 0);
+        }
+
+        public void SetBackView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X, _modelCenter.Y, _modelCenter.Z - distance);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 1, 0);
+        }
+
+        public void SetTopView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X, _modelCenter.Y + distance, _modelCenter.Z);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 0, -1);
+        }
+
+        public void SetBottomView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X, _modelCenter.Y - distance, _modelCenter.Z);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 0, 1);
+        }
+
+        public void SetLeftView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X - distance, _modelCenter.Y, _modelCenter.Z);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 1, 0);
+        }
+
+        public void SetRightView()
+        {
+            if (_camera == null) return;
+            float distance = _modelSize * 2.0f;
+            _camera.Position = new Vector3(_modelCenter.X + distance, _modelCenter.Y, _modelCenter.Z);
+            _camera.Target = _modelCenter;
+            _camera.Up = new Vector3(0, 1, 0);
+        }
     }
 
     /// <summary>

@@ -29,6 +29,25 @@
                     <TextBlock Margin="5,0,0,0" Text="開く" />
                 </StackPanel>
             </Button>
+            <Separator />
+            <Button Command="{Binding SetFrontViewCommand}" ToolTip="正面">
+                <TextBlock Text="正面" />
+            </Button>
+            <Button Command="{Binding SetBackViewCommand}" ToolTip="背面">
+                <TextBlock Text="背面" />
+            </Button>
+            <Button Command="{Binding SetTopViewCommand}" ToolTip="上面">
+                <TextBlock Text="上面" />
+            </Button>
+            <Button Command="{Binding SetBottomViewCommand}" ToolTip="下面">
+                <TextBlock Text="下面" />
+            </Button>
+            <Button Command="{Binding SetLeftViewCommand}" ToolTip="左面">
+                <TextBlock Text="左面" />
+            </Button>
+            <Button Command="{Binding SetRightViewCommand}" ToolTip="右面">
+                <TextBlock Text="右面" />
+            </Button>
         </ToolBar>
 
         <!--  OpenGL レンダリングエリア  -->
