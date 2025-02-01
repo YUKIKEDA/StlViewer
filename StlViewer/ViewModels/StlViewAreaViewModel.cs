@@ -1,13 +1,47 @@
-﻿using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+﻿using System.Windows.Media.Imaging;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
+using StlViewer.Utilities;
 
 namespace StlViewer.ViewModels
 {
     public class StlViewAreaViewModel
     {
-        public StlViewAreaViewModel()
+        private const string VertexShaderSource = "";
+        private const string FragmentShaderSource = "";
+        private Renderer? _renderer;
+        private Material? _material;
+
+        private struct StlData
+        {
+            public float[] Vertices { get; set; }
+            public int[] Indices { get; set; }
+        }
+
+        private StlData? _stlData;
+
+        public void Initialize()
+        {
+            _renderer = CreateRenderer();
+            _material = CreateMaterial();
+        }
+
+        public void Render(TimeSpan delta)
+        {
+            // カラーバッファーとZバッファーのクリア
+            Renderer.ClearBuffer();
+
+            if (_stlData == null || _material == null) return;
+
+
+            // ジオメトリの生成
+            var geometry = CreateGeometry(_stlData.Value.Vertices, _stlData.Value.Indices, PrimitiveType.Triangles);
+
+            // ジオメトリの描画
+            Renderer.RenderGeometry(geometry, _material);
+        }
+
+        public void SetStlFile(StlFile? stlFile)
         {
         }
 
@@ -16,24 +50,18 @@ namespace StlViewer.ViewModels
             return new Renderer();
         }
 
-        private static Material CreateMaterial(string vertexShader, string fragmentShader)
+        private static Material CreateMaterial()
         {
-            return new Material(vertexShader, fragmentShader);
+            return new Material(VertexShaderSource, FragmentShaderSource);
         }
 
-        private static Geometry CreateGeometry(float[] vertices, int[] indices, PrimitiveType mode)
+        private static Geometry CreateGeometry(float[] vertices, int[] indices, PrimitiveType primitiveType)
         {
-            return new Geometry(vertices, indices, mode);
+            return new Geometry(vertices, indices, primitiveType);
         }
 
-        private static Texture CreateTexture(string path)
+        private void InitializeExtensions()
         {
-            return new Texture(path);
-        }
-
-        private static FrameBuffer CreateFrameBuffer(int width, int height, bool useFloatTexture)
-        {
-            return new FrameBuffer(width, height, useFloatTexture);
         }
     }
 
@@ -42,16 +70,23 @@ namespace StlViewer.ViewModels
     /// </summary>
     public class Renderer
     {
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
         public Renderer()
         {
             // 背面カリングの有効化
             GL.Enable(EnableCap.CullFace);
+            // 裏面をカリングする
             GL.CullFace(TriangleFace.Back);
-            GL.FrontFace(FrontFaceDirection.Ccw); // 反時計回りの三角形を前面とする
+            // 反時計回りの三角形を前面とする
+            GL.FrontFace(FrontFaceDirection.Ccw);
 
             // 深度書き込み及び深度テストの有効化
             GL.Enable(EnableCap.DepthTest);
-            GL.DepthFunc(DepthFunction.Lequal); // 深度テストの比較関数をLessEqualに設定
+            // 深度テストの比較関数をLessEqualに設定
+            GL.DepthFunc(DepthFunction.Lequal); 
+            // 深度テストの結果を書き込む
             GL.DepthMask(true);
 
             // αブレンドの無効化
@@ -105,6 +140,7 @@ namespace StlViewer.ViewModels
                 // バーテックスバッファオブジェクトのバインド
                 GL.BindBuffer(BufferTarget.ArrayBuffer, vbo.Vbo);
 
+                // アトリビュートの取得
                 var attributeLocation = GL.GetAttribLocation(material.Program, vbo.Name);
 
                 if (attributeLocation == -1)
@@ -113,8 +149,11 @@ namespace StlViewer.ViewModels
                 }
                 else
                 {
+                    // アトリビュートの有効化
                     GL.EnableVertexAttribArray(attributeLocation);
+                    // アトリビュートのポインターの設定
                     GL.VertexAttribPointer(attributeLocation, vbo.Size, VertexAttribPointerType.Float, false, 0, 0);
+                    // アトリビュートの位置をリストに追加
                     attributeLocations.Add(attributeLocation);
                 }
             }
@@ -258,7 +297,7 @@ namespace StlViewer.ViewModels
     /// <summary>
     /// ユニフォーム変数
     /// </summary>
-    public struct UniformFloat
+    public readonly struct UniformFloat
     {
         public string Name { get; }
         public float[] Values { get; }
@@ -279,7 +318,7 @@ namespace StlViewer.ViewModels
     /// <summary>
     /// ユニフォーム変数
     /// </summary>
-    public struct UniformInt
+    public readonly struct UniformInt
     {
         public string Name { get; }
         public int[] Values { get; }
@@ -302,6 +341,8 @@ namespace StlViewer.ViewModels
     /// </summary>
     public class Material
     {
+        #region Public properties
+
         public int Program { get; private set; }
         public int VertexShader { get; private set; }
         public int FragmentShader { get; private set; }
@@ -314,7 +355,9 @@ namespace StlViewer.ViewModels
 
         // テクスチャ配列
         public int[] Textures { get; private set; }
-        
+
+        #endregion
+
         public Material(string vertexShader, string fragmentShader)
         {
             VertexShader = CreateShader(vertexShader, ShaderType.VertexShader);
@@ -325,13 +368,84 @@ namespace StlViewer.ViewModels
             Textures = [];
         }
 
-        // リソースの解放
+        #region Public methods
+
+        /// <summary>
+        /// リソースの解放
+        /// </summary>
         public void Dispose()
         {
-            GL.DeleteShader(VertexShader);
-            GL.DeleteShader(FragmentShader);
-            GL.DeleteProgram(Program);
+            if (Program != 0)
+            {
+                // プログラムからシェーダーをデタッチ
+                if (VertexShader != 0)
+                    GL.DetachShader(Program, VertexShader);
+                if (FragmentShader != 0)
+                    GL.DetachShader(Program, FragmentShader);
+                
+                // プログラムを削除
+                GL.DeleteProgram(Program);
+            }
+
+            // シェーダーを削除
+            if (VertexShader != 0)
+                GL.DeleteShader(VertexShader);
+            if (FragmentShader != 0)
+                GL.DeleteShader(FragmentShader);
         }
+
+                /// <summary>
+        /// float型のユニフォーム変数の設定
+        /// </summary>
+        /// <param name="name"> ユニフォーム変数名 </param>
+        /// <param name="value"> ユニフォーム変数値 </param>
+        public void SetUniformFloat(string name, float value)
+        {
+            // 既存の値の更新
+            for (int i = 0; i < UniformsFloat.Length; i++)
+            {
+                if (UniformsFloat[i].Name == name)
+                {
+                    UniformsFloat[i] = new UniformFloat(name, value);
+                    return;
+                }
+            }
+            // 新規追加
+            UniformsFloat = [.. UniformsFloat, new UniformFloat(name, value)];
+        }
+
+        /// <summary>
+        /// int型のユニフォーム変数の設定
+        /// </summary>
+        /// <param name="name"> ユニフォーム変数名 </param>
+        /// <param name="value"> ユニフォーム変数値 </param>
+        public void SetUniformInt(string name, int value)
+        {
+            // 既存の値の更新
+            for (int i = 0; i < UniformsInt.Length; i++)
+            {
+                if (UniformsInt[i].Name == name)
+                {
+                    UniformsInt[i] = new UniformInt(name, value);
+                    return;
+                }
+            }
+            // 新規追加
+            UniformsInt = [.. UniformsInt, new UniformInt(name, value)];
+        }
+
+        /// <summary>
+        /// テクスチャ配列の設定
+        /// </summary>
+        /// <param name="textures"> テクスチャ配列 </param>
+        public void SetTextures(int[] textures)
+        {
+            Textures = textures;
+        }
+
+        #endregion
+
+        #region Private methods
 
         private int CreateShader(string source, ShaderType type)
         {
@@ -378,43 +492,7 @@ namespace StlViewer.ViewModels
             return program;
         }
 
-        // float型のユニフォーム変数の設定
-        public void SetUniformFloat(string name, float value)
-        {
-            // 既存の値の更新
-            for (int i = 0; i < UniformsFloat.Length; i++)
-            {
-                if (UniformsFloat[i].Name == name)
-                {
-                    UniformsFloat[i] = new UniformFloat(name, value);
-                    return;
-                }
-            }
-            // 新規追加
-            UniformsFloat = [.. UniformsFloat, new UniformFloat(name, value)];
-        }
-
-        // int型のユニフォーム変数の設定
-        public void SetUniformInt(string name, int value)
-        {
-            // 既存の値の更新
-            for (int i = 0; i < UniformsInt.Length; i++)
-            {
-                if (UniformsInt[i].Name == name)
-                {
-                    UniformsInt[i] = new UniformInt(name, value);
-                    return;
-                }
-            }
-            // 新規追加
-            UniformsInt = [.. UniformsInt, new UniformInt(name, value)];
-        }
-
-        // テクスチャ配列の設定
-        public void SetTextures(int[] textures)
-        {
-            Textures = textures;
-        }
+        #endregion
     }
 
     /// <summary>
@@ -455,6 +533,8 @@ namespace StlViewer.ViewModels
     /// <param name="mode"> プリミティブタイプ </param>
     public class Geometry
     {
+        #region Public properties
+
         /// <summary>
         /// バーテックスバッファオブジェクト
         /// </summary>
@@ -481,6 +561,8 @@ namespace StlViewer.ViewModels
         // インデックス数
         public int IndexCount { get; private set; }
 
+        #endregion
+
         /// <summary>
         /// コンストラクタ
         /// </summary>
@@ -490,22 +572,28 @@ namespace StlViewer.ViewModels
         public Geometry(float[] vertices, int[] indices, PrimitiveType mode)
         {
             Vbos = [new VertexBufferObject(CreateVbo(vertices), "a_position", 3)];
-            Ibos = new IndexBufferObject(CreateIbo(indices));
             Mode = mode;
             VertexCount = vertices.Length / 3;
+            Ibos = new IndexBufferObject(CreateIbo(indices));
             IndexCount = indices.Length;
         }
+
+        #region Public methods
 
         /// <summary>
         /// リソースの解放
         /// </summary>
         public void Dispose()
         {
+            // インデックスバッファオブジェクトの削除
+            if (Ibos.Ibo != 0)
+                GL.DeleteBuffer(Ibos.Ibo);
+
+            // バーテックスバッファオブジェクトの削除
             foreach (var vbo in Vbos)
             {
                 GL.DeleteBuffer(vbo.Vbo);
             }
-            GL.DeleteBuffer(Ibos.Ibo);
         }
 
         /// <summary>
@@ -525,6 +613,10 @@ namespace StlViewer.ViewModels
         {
             Vbos = [.. Vbos, new VertexBufferObject(CreateVbo(normal), "a_normal", 3)];
         }
+
+        #endregion
+
+        #region Private methods
 
         private static int CreateVbo(float[] vertices)
         {
@@ -567,6 +659,8 @@ namespace StlViewer.ViewModels
 
             return ibo;
         }
+
+        #endregion
     }
 
     /// <summary>

@@ -14,6 +14,8 @@ namespace StlViewer.ViewModels
         private StlFile? _currentStlFile;
         private string _statusMessage = string.Empty;
         private bool _isLoading;
+        private readonly StlViewAreaViewModel _stlViewAreaViewModel;
+
 
         public StlFile? CurrentStlFile
         {
@@ -74,6 +76,7 @@ namespace StlViewer.ViewModels
                         CurrentStlFile = StlParser.Load(openFileDialog.FileName);
                     });
 
+                    _stlViewAreaViewModel.SetStlFile(CurrentStlFile);
                     StatusMessage = $"ファイルを読み込みました: {Path.GetFileName(openFileDialog.FileName)}";
                 }
                 catch (Exception ex)
@@ -95,7 +98,17 @@ namespace StlViewer.ViewModels
         public StlViewerViewModel()
         {
             LoadStlFileCommand = new RelayCommand(LoadStlFile);
-            new StlViewAreaViewModel();
+            _stlViewAreaViewModel = new StlViewAreaViewModel();
+        }
+
+        public void Initialize()
+        {
+            _stlViewAreaViewModel.Initialize();
+        }
+
+        public void Render(TimeSpan delta)
+        {
+            _stlViewAreaViewModel.Render(delta);
         }
     }
 }

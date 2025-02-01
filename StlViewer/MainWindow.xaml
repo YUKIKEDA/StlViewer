@@ -13,48 +13,6 @@
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
 
-    <!--<Grid>
-        <glWpfControl:GLWpfControl x:Name="OpenTkControl" Render="OpenTkControl_OnRender">
-
-            <glWpfControl:GLWpfControl.Settings>
-                <glWpfControl:GLWpfControlSettings MajorVersion="3" MinorVersion="3" />
-            </glWpfControl:GLWpfControl.Settings>
-
-        </glWpfControl:GLWpfControl>
-        <Border
-            Margin="10"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            BorderBrush="CornflowerBlue"
-            BorderThickness="2">
-            <Label
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                Background="#FFE6931C"
-                Content="Overlaid label with border" />
-        </Border>
-        <glWpfControl:GLWpfControl
-            x:Name="InsetControl"
-            Width="128"
-            Height="128"
-            Margin="10,0,0,60"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Bottom"
-            Render="InsetControl_OnRender" />
-        <Button
-            Width="128"
-            Margin="10"
-            Padding="0,10,0,10"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Bottom"
-            Click="RedrawButton_OnClick"
-            Content="Redraw Inset Control" />
-    </Grid>-->
-
-    <Window.DataContext>
-        <viewmodels:StlViewerViewModel />
-    </Window.DataContext>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -72,32 +30,26 @@
                 </StackPanel>
             </Button>
         </ToolBar>
-        <Border
+
+        <!--  OpenGL レンダリングエリア  -->
+        <glWpfControl:GLWpfControl
+            x:Name="OpenTkControl"
             Grid.Row="1"
-            Background="#FF2D2D2D"
-            BorderBrush="Gray"
-            BorderThickness="1">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock
-                    Margin="0,0,0,20"
-                    FontSize="18"
-                    Foreground="White"
-                    Text="STLファイル情報"
-                    TextAlignment="Center" />
-                <TextBlock
-                    Margin="0,5"
-                    Foreground="White"
-                    Text="{Binding CurrentStlFile, StringFormat=ファイル: {0}, TargetNullValue=ファイルが読み込まれていません}" />
-                <TextBlock
-                    Margin="0,5"
-                    Foreground="White"
-                    Text="{Binding CurrentStlFile.Triangles.Count, StringFormat=三角形の数: {0}個}" />
-            </StackPanel>
-        </Border>
+            Ready="OpenTkControl_Ready"
+            Render="OpenTkControl_OnRender">
+            <glWpfControl:GLWpfControl.Settings>
+                <glWpfControl:GLWpfControlSettings
+                    MajorVersion="3"
+                    MinorVersion="3"
+                    RenderContinuously="True" />
+            </glWpfControl:GLWpfControl.Settings>
+        </glWpfControl:GLWpfControl>
+
         <StatusBar Grid.Row="2">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusMessage}" />
             </StatusBarItem>
+            <Separator />
             <StatusBarItem HorizontalAlignment="Right">
                 <ProgressBar
                     Width="100"
