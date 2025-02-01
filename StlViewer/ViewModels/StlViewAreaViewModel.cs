@@ -463,7 +463,7 @@ namespace StlViewer.ViewModels
             if (compileStatus == 0)
             {
                 string infoLog = GL.GetShaderInfoLog(shader);
-                throw new Exception($"シェーダーコンパイルに失敗しました。: {infoLog}");
+                Console.WriteLine($"シェーダーコンパイルに失敗しました。: {infoLog}");
             }
 
             return shader;
@@ -486,7 +486,7 @@ namespace StlViewer.ViewModels
             if (linkStatus == 0)
             {
                 string infoLog = GL.GetProgramInfoLog(program);
-                throw new Exception($"プログラムのリンクに失敗しました。: {infoLog}");
+                Console.WriteLine($"プログラムのリンクに失敗しました。: {infoLog}");
             }
 
             return program;
@@ -951,5 +951,49 @@ namespace StlViewer.ViewModels
 
         // 正投影用の上端座標
         public double Top { get; set; }
+
+        public Camera()
+        {
+            Position = new Vector3(0, 0, 5);
+            Target = new Vector3(0, 0, 0);
+            Up = new Vector3(0, 1, 0);
+            Fov = 90.0 * Math.PI / 180.0;
+            AspectRatio = 1;
+            Near = 0.5;
+            Far = 10.0;
+            Left = -1.0;
+            Right = 1.0;
+            Bottom = -1.0;
+            Top = 1.0;
+        }
+
+        /// <summary>
+        /// ビュー行列の取得
+        /// </summary>
+        /// <returns>ビュー行列</returns>
+        public Matrix4 GetViewMatrix()
+        {
+            return Matrix4.LookAt(Position, Target, Up);
+        }
+
+        /// <summary>
+        /// 射影行列の取得
+        /// </summary>
+        /// <param name="isPerspective">透視投影かどうか</param>
+        /// <returns>射影行列</returns>
+        public Matrix4 GetProjectionMatrix(bool isPerspective)
+        {
+            if (isPerspective)
+            {
+                // 透視投影行列の生成
+                return Matrix4.CreatePerspectiveFieldOfView((float)Fov, (float)AspectRatio, (float)Near, (float)Far);
+            }
+            else
+            {
+                // 正射影行列の生成
+                return Matrix4.CreateOrthographic((float)(Right - Left), (float)(Top - Bottom), (float)Near, (float)Far);
+            }
+        }
     }
 }
+
