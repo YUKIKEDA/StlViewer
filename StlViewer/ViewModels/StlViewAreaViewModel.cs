@@ -229,10 +229,6 @@ void main()
             return new Geometry(vertices, indices, primitiveType);
         }
 
-        private void InitializeExtensions()
-        {
-        }
-
         public void OnMouseDown(System.Windows.Point position)
         {
             _isDragging = true;
