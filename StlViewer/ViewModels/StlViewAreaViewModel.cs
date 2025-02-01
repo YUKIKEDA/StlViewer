@@ -423,7 +423,7 @@ void main()
         /// </summary>
         /// <param name="name"> ユニフォーム変数名 </param>
         /// <param name="value"> ユニフォーム変数値 </param>
-        public void SetUniformFloat(string name, float value)
+        public void SetUniformFloat(string name, float[] value)
         {
             // 既存の値の更新
             for (int i = 0; i < UniformsFloat.Length; i++)
@@ -443,7 +443,7 @@ void main()
         /// </summary>
         /// <param name="name"> ユニフォーム変数名 </param>
         /// <param name="value"> ユニフォーム変数値 </param>
-        public void SetUniformInt(string name, int value)
+        public void SetUniformInt(string name, int[] value)
         {
             // 既存の値の更新
             for (int i = 0; i < UniformsInt.Length; i++)
