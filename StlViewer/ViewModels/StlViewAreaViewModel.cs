@@ -127,28 +127,31 @@ void main()
             // 頂点データの生成
             var vertices = new List<float>();
             var indices = new List<int>();
-            var currentIndex = 0;
+            var vertexMap = new Dictionary<(float X, float Y, float Z), int>();
 
             // 各三角形について処理
             foreach (var triangle in stlFile.Triangles)
             {
-                // 頂点座標を追加
-                vertices.AddRange(new[]
+                var vertices3d = new[]
                 {
-                    triangle.Vertex1.X, triangle.Vertex1.Y, triangle.Vertex1.Z,
-                    triangle.Vertex2.X, triangle.Vertex2.Y, triangle.Vertex2.Z,
-                    triangle.Vertex3.X, triangle.Vertex3.Y, triangle.Vertex3.Z
-                });
+                    (triangle.Vertex1.X, triangle.Vertex1.Y, triangle.Vertex1.Z),
+                    (triangle.Vertex2.X, triangle.Vertex2.Y, triangle.Vertex2.Z),
+                    (triangle.Vertex3.X, triangle.Vertex3.Y, triangle.Vertex3.Z)
+                };
 
-                // インデックスを追加
-                indices.AddRange(new[]
+                // 各頂点について処理
+                foreach (var vertex in vertices3d)
                 {
-                    currentIndex,
-                    currentIndex + 1,
-                    currentIndex + 2
-                });
-
-                currentIndex += 3;
+                    // 頂点が既に存在するかチェック
+                    if (!vertexMap.TryGetValue(vertex, out int index))
+                    {
+                        // 新しい頂点を追加
+                        index = vertices.Count / 3;
+                        vertices.AddRange(new[] { vertex.X, vertex.Y, vertex.Z });
+                        vertexMap[vertex] = index;
+                    }
+                    indices.Add(index);
+                }
             }
 
             // STLデータを保存
