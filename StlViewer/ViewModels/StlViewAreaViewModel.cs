@@ -23,24 +23,66 @@ namespace StlViewer.ViewModels
 
     public class StlViewAreaViewModel
     {
+        /// <summary>
+        /// a_normal: 法線情報を追加
+        /// u_model: モデル行列を追加
+        /// u_normal_matrix: 法線変換行列を追加
+        /// u_mvp: モデルビュープロジェクション行列を追加
+        /// v_normal: フラグメントシェーダーに渡す法線
+        /// v_position: フラグメントシェーダーに渡す頂点位置
+        /// </summary>
+
         private const string VertexShaderSource = @"#version 330
 
 in vec3 a_position;
+in vec3 a_normal;
+
 uniform mat4 u_mvp;
+uniform mat4 u_model;
+uniform mat4 u_normal_matrix;
+
+out vec3 v_normal;
+out vec3 v_position;
 
 void main()
 {
+    vec4 worldPos = u_model * vec4(a_position, 1.0);
+    v_position = worldPos.xyz;
+    v_normal = normalize(mat3(u_normal_matrix) * a_normal);
     gl_Position = u_mvp * vec4(a_position, 1.0);
 }";
 
+        /// <summary>
+        /// v_normal: フラグメントシェーダーに渡す法線
+        /// v_position: フラグメントシェーダーに渡す頂点位置
+        /// u_light_position: 光源位置
+        /// u_camera_position: カメラ位置
+        /// u_base_color: ベースカラー
+        /// </summary>
         private const string FragmentShaderSource = @"#version 330
 
-uniform vec4 u_color;
+in vec3 v_normal;
+in vec3 v_position;
+
+uniform vec3 u_light_position;
+uniform vec3 u_camera_position;
+uniform vec3 u_base_color;
+
 out vec4 o_color;
 
 void main()
 {
-    o_color = u_color;
+    vec3 N = normalize(v_normal);
+    vec3 L = normalize(u_light_position - v_position);
+    vec3 V = normalize(u_camera_position - v_position);
+    vec3 H = normalize(L + V);
+
+    float ambient = 0.2;
+    float diffuse = max(dot(N, L), 0.0);
+    float specular = pow(max(dot(N, H), 0.0), 32.0);
+
+    vec3 color = u_base_color * (ambient + diffuse) + vec3(1.0) * specular;
+    o_color = vec4(color, 1.0);
 }";
         private Renderer? _renderer;
         private Material? _material;
@@ -51,6 +93,7 @@ void main()
         private struct StlData
         {
             public float[] Vertices { get; set; }
+            public float[] Normals { get; set; }  // 法線情報を追加
             public int[] Indices { get; set; }
         }
 
@@ -84,17 +127,22 @@ void main()
             // カラーバッファーとZバッファーのクリア
             Renderer.ClearBuffer();
 
-            // ジオメトリの生成
-            var geometry = CreateGeometry(_stlData.Value.Vertices, _stlData.Value.Indices, PrimitiveType.Triangles);
+            // ジオメトリの生成（法線情報を追加）
+            var geometry = CreateGeometry(_stlData.Value.Vertices, _stlData.Value.Normals, _stlData.Value.Indices, PrimitiveType.Triangles);
             Debug.WriteLine($"Render: 頂点数 = {_stlData.Value.Vertices.Length / 3}, インデックス数 = {_stlData.Value.Indices.Length}");
 
             // モデル・ビュー・プロジェクション行列の計算
             var modelMatrix = Matrix4.Identity;
             var mvpMatrix = modelMatrix * viewMatrix * projectionMatrix;
+            var normalMatrix = Matrix4.Transpose(Matrix4.Invert(modelMatrix));
 
             // シェーダーにユニフォーム変数を設定
             _material.SetUniformFloat("u_mvp", mvpMatrix.ToArray());
-            _material.SetUniformFloat("u_color", [0.7f, 0.7f, 0.7f, 1.0f]);
+            _material.SetUniformFloat("u_model", modelMatrix.ToArray());
+            _material.SetUniformFloat("u_normal_matrix", normalMatrix.ToArray());
+            _material.SetUniformFloat("u_base_color", [0.7f, 0.7f, 0.7f]);
+            _material.SetUniformFloat("u_light_position", [5.0f, 5.0f, 5.0f]);
+            _material.SetUniformFloat("u_camera_position", [_camera.Position.X, _camera.Position.Y, _camera.Position.Z]);
 
             // OpenGLのエラーをチェック
             var error = GL.GetError();
@@ -124,8 +172,9 @@ void main()
                 return;
             }
 
-            // 頂点データの生成
+            // 頂点データと法線データの生成
             var vertices = new List<float>();
+            var normals = new List<float>();
             var indices = new List<int>();
             var vertexMap = new Dictionary<(float X, float Y, float Z), int>();
 
@@ -148,6 +197,8 @@ void main()
                         // 新しい頂点を追加
                         index = vertices.Count / 3;
                         vertices.AddRange(new[] { vertex.X, vertex.Y, vertex.Z });
+                        // 法線を追加（三角形の法線を使用）
+                        normals.AddRange(new[] { triangle.Normal.X, triangle.Normal.Y, triangle.Normal.Z });
                         vertexMap[vertex] = index;
                     }
                     indices.Add(index);
@@ -158,6 +209,7 @@ void main()
             _stlData = new StlData
             {
                 Vertices = [.. vertices],
+                Normals = [.. normals],
                 Indices = [.. indices]
             };
 
@@ -227,9 +279,11 @@ void main()
             return material;
         }
 
-        private static Geometry CreateGeometry(float[] vertices, int[] indices, PrimitiveType primitiveType)
+        private static Geometry CreateGeometry(float[] vertices, float[] normals, int[] indices, PrimitiveType primitiveType)
         {
-            return new Geometry(vertices, indices, primitiveType);
+            var geometry = new Geometry(vertices, indices, primitiveType);
+            geometry.AddNormal(normals);  // 法線情報を追加
+            return geometry;
         }
 
         public void OnMouseDown(System.Windows.Point position)
