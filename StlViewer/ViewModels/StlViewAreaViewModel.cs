@@ -55,7 +55,8 @@ void main()
         /// <summary>
         /// v_normal: フラグメントシェーダーに渡す法線
         /// v_position: フラグメントシェーダーに渡す頂点位置
-        /// u_light_position: 光源位置
+        /// u_light_positions: 複数の光源位置
+        /// u_light_colors: 光源ごとの色
         /// u_camera_position: カメラ位置
         /// u_base_color: ベースカラー
         /// </summary>
@@ -64,7 +65,8 @@ void main()
 in vec3 v_normal;
 in vec3 v_position;
 
-uniform vec3 u_light_position;
+uniform vec3 u_light_positions[4];
+uniform vec3 u_light_colors[4];
 uniform vec3 u_camera_position;
 uniform vec3 u_base_color;
 
@@ -73,16 +75,25 @@ out vec4 o_color;
 void main()
 {
     vec3 N = normalize(v_normal);
-    vec3 L = normalize(u_light_position - v_position);
     vec3 V = normalize(u_camera_position - v_position);
-    vec3 H = normalize(L + V);
-
+    
+    vec3 finalColor = vec3(0.0);
     float ambient = 0.2;
-    float diffuse = max(dot(N, L), 0.0);
-    float specular = pow(max(dot(N, H), 0.0), 32.0);
-
-    vec3 color = u_base_color * (ambient + diffuse) + vec3(1.0) * specular;
-    o_color = vec4(color, 1.0);
+    
+    for (int i = 0; i < 4; i++)
+    {
+        vec3 L = normalize(u_light_positions[i] - v_position);
+        vec3 H = normalize(L + V);
+        
+        float diffuse = max(dot(N, L), 0.0);
+        float specular = pow(max(dot(N, H), 0.0), 32.0);
+        
+        finalColor += u_light_colors[i] * (u_base_color * diffuse + vec3(0.3) * specular);
+    }
+    
+    finalColor += u_base_color * ambient;
+    
+    o_color = vec4(finalColor, 1.0);
 }";
         private Renderer? _renderer;
         private Material? _material;
@@ -136,12 +147,38 @@ void main()
             var mvpMatrix = modelMatrix * viewMatrix * projectionMatrix;
             var normalMatrix = Matrix4.Transpose(Matrix4.Invert(modelMatrix));
 
+            // 4つの光源位置を設定（モデルを囲むように配置）
+            float lightDistance = _modelSize * 3.0f;
+            var lightPositions = new[]
+            {
+                new Vector3(_modelCenter.X + lightDistance, _modelCenter.Y + lightDistance, _modelCenter.Z + lightDistance),  // 右上前
+                new Vector3(_modelCenter.X - lightDistance, _modelCenter.Y + lightDistance, _modelCenter.Z - lightDistance),  // 左上後
+                new Vector3(_modelCenter.X + lightDistance, _modelCenter.Y - lightDistance, _modelCenter.Z - lightDistance),  // 右下後
+                new Vector3(_modelCenter.X - lightDistance, _modelCenter.Y - lightDistance, _modelCenter.Z + lightDistance)   // 左下前
+            };
+
+            // 光源の色を設定（白色光）
+            var lightColors = new[]
+            {
+                new Vector3(1.0f, 1.0f, 1.0f),
+                new Vector3(0.8f, 0.8f, 0.8f),
+                new Vector3(0.8f, 0.8f, 0.8f),
+                new Vector3(0.8f, 0.8f, 0.8f)
+            };
+
             // シェーダーにユニフォーム変数を設定
             _material.SetUniformFloat("u_mvp", mvpMatrix.ToArray());
             _material.SetUniformFloat("u_model", modelMatrix.ToArray());
             _material.SetUniformFloat("u_normal_matrix", normalMatrix.ToArray());
             _material.SetUniformFloat("u_base_color", [0.7f, 0.7f, 0.7f]);
-            _material.SetUniformFloat("u_light_position", [5.0f, 5.0f, 5.0f]);
+            
+            // 光源位置の配列を設定
+            for (int i = 0; i < lightPositions.Length; i++)
+            {
+                _material.SetUniformFloat($"u_light_positions[{i}]", [lightPositions[i].X, lightPositions[i].Y, lightPositions[i].Z]);
+                _material.SetUniformFloat($"u_light_colors[{i}]", [lightColors[i].X, lightColors[i].Y, lightColors[i].Z]);
+            }
+            
             _material.SetUniformFloat("u_camera_position", [_camera.Position.X, _camera.Position.Y, _camera.Position.Z]);
 
             // OpenGLのエラーをチェック
