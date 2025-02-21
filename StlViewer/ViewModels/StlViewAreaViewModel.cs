@@ -23,78 +23,8 @@ namespace StlViewer.ViewModels
 
     public class StlViewAreaViewModel
     {
-        /// <summary>
-        /// a_normal: 法線情報を追加
-        /// u_model: モデル行列を追加
-        /// u_normal_matrix: 法線変換行列を追加
-        /// u_mvp: モデルビュープロジェクション行列を追加
-        /// v_normal: フラグメントシェーダーに渡す法線
-        /// v_position: フラグメントシェーダーに渡す頂点位置
-        /// </summary>
+        private string _glslVersion = "";
 
-        private const string VertexShaderSource = @"#version 330
-
-in vec3 a_position;
-in vec3 a_normal;
-
-uniform mat4 u_mvp;
-uniform mat4 u_model;
-uniform mat4 u_normal_matrix;
-
-out vec3 v_normal;
-out vec3 v_position;
-
-void main()
-{
-    vec4 worldPos = u_model * vec4(a_position, 1.0);
-    v_position = worldPos.xyz;
-    v_normal = normalize(mat3(u_normal_matrix) * a_normal);
-    gl_Position = u_mvp * vec4(a_position, 1.0);
-}";
-
-        /// <summary>
-        /// v_normal: フラグメントシェーダーに渡す法線
-        /// v_position: フラグメントシェーダーに渡す頂点位置
-        /// u_light_positions: 複数の光源位置
-        /// u_light_colors: 光源ごとの色
-        /// u_camera_position: カメラ位置
-        /// u_base_color: ベースカラー
-        /// </summary>
-        private const string FragmentShaderSource = @"#version 330
-
-in vec3 v_normal;
-in vec3 v_position;
-
-uniform vec3 u_light_positions[4];
-uniform vec3 u_light_colors[4];
-uniform vec3 u_camera_position;
-uniform vec3 u_base_color;
-
-out vec4 o_color;
-
-void main()
-{
-    vec3 N = normalize(v_normal);
-    vec3 V = normalize(u_camera_position - v_position);
-    
-    vec3 finalColor = vec3(0.0);
-    float ambient = 0.2;
-    
-    for (int i = 0; i < 4; i++)
-    {
-        vec3 L = normalize(u_light_positions[i] - v_position);
-        vec3 H = normalize(L + V);
-        
-        float diffuse = max(dot(N, L), 0.0);
-        float specular = pow(max(dot(N, H), 0.0), 32.0);
-        
-        finalColor += u_light_colors[i] * (u_base_color * diffuse + vec3(0.3) * specular);
-    }
-    
-    finalColor += u_base_color * ambient;
-    
-    o_color = vec4(finalColor, 1.0);
-}";
         private Renderer? _renderer;
         private Material? _material;
         private Camera? _camera;
@@ -300,20 +230,148 @@ void main()
             }
         }
 
+        private string GetGLSLVersionString()
+        {
+            if (string.IsNullOrEmpty(_glslVersion))
+            {
+                // OpenGLのバージョン文字列を取得
+                string version = GL.GetString(StringName.Version);
+                string glslVersion = GL.GetString(StringName.ShadingLanguageVersion);
+                
+                Debug.WriteLine($"OpenGL Version: {version}");
+                Debug.WriteLine($"GLSL Version: {glslVersion}");
+
+                // バージョンに基づいてGLSLバージョン文字列を決定
+                if (glslVersion.StartsWith("4."))
+                {
+                    _glslVersion = "400";
+                }
+                else if (glslVersion.StartsWith("3.3"))
+                {
+                    _glslVersion = "330";
+                }
+                else if (glslVersion.StartsWith("3.2"))
+                {
+                    _glslVersion = "150";
+                }
+                else if (glslVersion.StartsWith("3.1") || glslVersion.StartsWith("3.0"))
+                {
+                    _glslVersion = "130";
+                }
+                else
+                {
+                    _glslVersion = "120"; // 最も基本的なバージョン
+                }
+            }
+            return _glslVersion;
+        }
+
+        /// <summary>
+        /// a_normal: 法線情報を追加
+        /// u_model: モデル行列を追加
+        /// u_normal_matrix: 法線変換行列を追加
+        /// u_mvp: モデルビュープロジェクション行列を追加
+        /// v_normal: フラグメントシェーダーに渡す法線
+        /// v_position: フラグメントシェーダーに渡す頂点位置
+        /// </summary>        
+        private string GenerateVertexShaderSource()
+        {
+            return $@"#version {GetGLSLVersionString()}
+
+in vec3 a_position;
+in vec3 a_normal;
+
+uniform mat4 u_mvp;
+uniform mat4 u_model;
+uniform mat4 u_normal_matrix;
+
+out vec3 v_normal;
+out vec3 v_position;
+
+void main()
+{{
+    vec4 worldPos = u_model * vec4(a_position, 1.0);
+    v_position = worldPos.xyz;
+    v_normal = normalize(mat3(u_normal_matrix) * a_normal);
+    gl_Position = u_mvp * vec4(a_position, 1.0);
+}}";
+        }
+
+        /// <summary>
+        /// v_normal: フラグメントシェーダーに渡す法線
+        /// v_position: フラグメントシェーダーに渡す頂点位置
+        /// u_light_positions: 複数の光源位置
+        /// u_light_colors: 光源ごとの色
+        /// u_camera_position: カメラ位置
+        /// u_base_color: ベースカラー
+        /// </summary>
+        private string GenerateFragmentShaderSource()
+        {
+            return $@"#version {GetGLSLVersionString()}
+
+in vec3 v_normal;
+in vec3 v_position;
+
+uniform vec3 u_light_positions[4];
+uniform vec3 u_light_colors[4];
+uniform vec3 u_camera_position;
+uniform vec3 u_base_color;
+
+out vec4 o_color;
+
+void main()
+{{
+    vec3 N = normalize(v_normal);
+    vec3 V = normalize(u_camera_position - v_position);
+    
+    vec3 finalColor = vec3(0.0);
+    float ambient = 0.2;
+    
+    for (int i = 0; i < 4; i++)
+    {{
+        vec3 L = normalize(u_light_positions[i] - v_position);
+        vec3 H = normalize(L + V);
+        
+        float diffuse = max(dot(N, L), 0.0);
+        float specular = pow(max(dot(N, H), 0.0), 32.0);
+        
+        finalColor += u_light_colors[i] * (u_base_color * diffuse + vec3(0.3) * specular);
+    }}
+    
+    finalColor += u_base_color * ambient;
+    
+    o_color = vec4(finalColor, 1.0);
+}}";
+        }
+
         private static Renderer CreateRenderer()
         {
             return new Renderer();
         }
 
-        private static Material CreateMaterial()
+        private Material CreateMaterial()
         {
-            var material = new Material(VertexShaderSource, FragmentShaderSource);
-            Debug.WriteLine($"シェーダープログラム作成: Program = {material.Program}");
-            var attribLocation = GL.GetAttribLocation(material.Program, "a_position");
-            Debug.WriteLine($"a_position location = {attribLocation}");
-            var uniformLocation = GL.GetUniformLocation(material.Program, "u_mvp");
-            Debug.WriteLine($"u_mvp location = {uniformLocation}");
-            return material;
+            try
+            {
+                var vertexShader = GenerateVertexShaderSource();
+                var fragmentShader = GenerateFragmentShaderSource();
+                
+                var material = new Material(vertexShader, fragmentShader);
+                Debug.WriteLine($"シェーダープログラム作成: Program = {material.Program}, GLSL Version = {_glslVersion}");
+                
+                var attribLocation = GL.GetAttribLocation(material.Program, "a_position");
+                Debug.WriteLine($"a_position location = {attribLocation}");
+                
+                var uniformLocation = GL.GetUniformLocation(material.Program, "u_mvp");
+                Debug.WriteLine($"u_mvp location = {uniformLocation}");
+                
+                return material;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"シェーダー作成エラー: {ex.Message}");
+                throw;
+            }
         }
 
         private static Geometry CreateGeometry(float[] vertices, float[] normals, int[] indices, PrimitiveType primitiveType)

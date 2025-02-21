@@ -62,8 +62,6 @@
             MouseWheel="OpenTkControl_MouseWheel">
             <glWpfControl:GLWpfControl.Settings>
                 <glWpfControl:GLWpfControlSettings
-                    MajorVersion="3"
-                    MinorVersion="3"
                     RenderContinuously="True" />
             </glWpfControl:GLWpfControl.Settings>
         </glWpfControl:GLWpfControl>
