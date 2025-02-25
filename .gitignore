@@ -5,6 +5,7 @@
 
 TestData/
 Resources/
+.venv
 
 # User-specific files
 *.rsuser
